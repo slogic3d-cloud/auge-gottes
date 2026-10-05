@@ -1,0 +1,49 @@
+{
+  "name": "gods-eye",
+  "productName": "GOD'S EYE",
+  "version": "0.1.0",
+  "description": "OSINT-Lagebild: Livecams, Satellitenbilder, Flug-/Schiffsverkehr, Naturereignisse und Recherche-Werkzeuge aus offenen, legalen Quellen.",
+  "main": "electron/main.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "web": "npx http-server . -p 8080 -c-1 -o /src/index.html",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux"
+  },
+  "build": {
+    "appId": "dev.godseye.app",
+    "productName": "GOD'S EYE",
+    "files": [
+      "electron/**",
+      "src/**",
+      "data/**",
+      "node_modules/**",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility"
+    }
+  },
+  "dependencies": {
+    "exifr": "^7.1.3",
+    "globe.gl": "^2.46.2",
+    "leaflet": "^1.9.4",
+    "satellite.js": "^5.0.0",
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3"
+  }
+}

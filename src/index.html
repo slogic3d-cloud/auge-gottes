@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="de" data-accent="cyan">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GOD'S EYE</title>
+<meta name="description" content="OSINT-Lagebild mit Livecams, Satellitenbildern, Flug- und Schiffsverkehr, Naturereignissen und Recherche-Werkzeugen aus offenen Quellen.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../node_modules/leaflet/dist/leaflet.css">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <!-- ============ KOPFLEISTE ============ -->
+  <header class="topbar">
+    <div class="brand" title="GOD'S EYE">
+      <svg class="brand-eye" viewBox="0 0 64 40" aria-hidden="true">
+        <path d="M2 20 C14 2, 50 2, 62 20 C50 38, 14 38, 2 20 Z" fill="none" stroke="currentColor" stroke-width="2"/>
+        <circle cx="32" cy="20" r="11" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <circle cx="32" cy="20" r="4.5" fill="currentColor"/>
+        <g class="brand-sweep"><path d="M32 20 L32 9 A11 11 0 0 1 42.5 16.5 Z" fill="currentColor" opacity=".35"/></g>
+      </svg>
+      <div class="brand-text">
+        <span class="brand-name">GOD'S EYE</span>
+        <span class="brand-sub" data-i18n="brand.sub">Offenes Lagebild · OSINT</span>
+      </div>
+    </div>
+
+    <div class="search" role="search">
+      <svg class="search-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16.5 16.5 L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <input id="searchInput" type="search" autocomplete="off" spellcheck="false"
+             data-i18n-placeholder="search.placeholder"
+             placeholder="Ort, Koordinaten, Flug (DLH400), MMSI, Domain, IP, @Benutzername, Name …">
+      <kbd class="search-kbd">/</kbd>
+      <div class="search-results" id="searchResults" hidden></div>
+    </div>
+
+    <div class="top-actions">
+      <div class="seg" id="viewToggle" role="tablist" aria-label="Kartenansicht">
+        <button type="button" class="seg-btn is-active" data-view="2d" id="btnView2d">2D</button>
+        <button type="button" class="seg-btn" data-view="3d" id="btnView3d">3D</button>
+      </div>
+      <select id="presetSelect" class="select" aria-label="Modus">
+        <option value="custom" data-i18n="preset.custom">Eigene Auswahl</option>
+        <option value="overview" data-i18n="preset.overview">Weltlage</option>
+        <option value="air" data-i18n="preset.air">Luftraum</option>
+        <option value="sea" data-i18n="preset.sea">Seeverkehr</option>
+        <option value="disaster" data-i18n="preset.disaster">Katastrophen</option>
+        <option value="space" data-i18n="preset.space">Orbit</option>
+        <option value="cams" data-i18n="preset.cams">Kameras</option>
+      </select>
+      <button type="button" class="btn" id="btnWindows" title="Kamera-Fenster">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="12" height="9" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="9" y="10" width="12" height="9" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+        <span data-i18n="btn.windows">Fenster</span>
+      </button>
+      <button type="button" class="btn" id="btnWall" title="Video-Wand">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h8v7H3zM13 4h8v7h-8zM3 13h8v7H3zM13 13h8v7h-8z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+        <span data-i18n="btn.wall">Video-Wand</span>
+      </button>
+      <button type="button" class="btn btn-icon" id="btnLang" title="Sprache / Language">DE</button>
+      <button type="button" class="btn btn-icon" id="btnSettings" title="Einstellungen" data-i18n-title="btn.settings">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ============ LINKS: EBENEN ============ -->
+  <aside class="panel panel-left" id="panelLeft" aria-label="Ebenen">
+    <div class="panel-head">
+      <h2 data-i18n="layers.title">Ebenen</h2>
+      <button type="button" class="link-btn" id="btnLayersOff" data-i18n="layers.alloff">Alle aus</button>
+    </div>
+    <div class="panel-body" id="layerList"><!-- per JS --></div>
+  </aside>
+
+  <!-- ============ MITTE: KARTE ============ -->
+  <main class="stage" id="stage">
+    <div id="map2d" class="map"></div>
+    <div id="map3d" class="map" hidden></div>
+
+    <div class="hud hud-tl">
+      <div class="hud-label" data-i18n="hud.cursor">Fadenkreuz</div>
+      <div class="hud-value mono" id="coordReadout">—</div>
+      <div class="hud-sub mono" id="coordDms">—</div>
+    </div>
+    <div class="hud hud-tr">
+      <div class="hud-label" data-i18n="hud.mode">Zeitmodus</div>
+      <div class="hud-value mono" id="timeModeReadout"><span class="live-dot"></span>LIVE</div>
+    </div>
+
+    <div class="scan" id="scanFx" hidden>
+      <div class="scan-ring"></div>
+      <div class="scan-ring r2"></div>
+      <div class="scan-cross"></div>
+      <div class="scan-label mono" id="scanLabel"></div>
+    </div>
+
+    <div class="geofence-hint" id="geofenceHint" hidden data-i18n="geofence.hint">Zwei Ecken auf der 2D-Karte anklicken, um eine Zone zu zeichnen · Esc bricht ab</div>
+  </main>
+
+  <!-- ============ RECHTS: ZIEL / OSINT / CAMS / FÄLLE / ALARME ============ -->
+  <aside class="panel panel-right" id="panelRight" aria-label="Werkzeuge">
+    <nav class="tabs" role="tablist">
+      <button type="button" class="tab is-active" data-tab="intel" data-i18n="tab.intel">Ziel</button>
+      <button type="button" class="tab" data-tab="osint" data-i18n="tab.osint">OSINT</button>
+      <button type="button" class="tab" data-tab="cams" data-i18n="tab.cams">Kameras</button>
+      <button type="button" class="tab" data-tab="cases" data-i18n="tab.cases">Fälle</button>
+      <button type="button" class="tab" data-tab="alerts" data-i18n="tab.alerts">Alarme<span class="tab-badge" id="alertBadge" hidden>0</span></button>
+    </nav>
+
+    <!-- Ziel -->
+    <section class="tab-pane is-active" data-pane="intel" id="paneIntel">
+      <div class="empty" id="intelEmpty">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="14" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M24 4v10M24 34v10M4 24h10M34 24h10" stroke="currentColor" stroke-width="1.5"/></svg>
+        <p data-i18n="intel.empty">Klick auf einen Ort, ein Flugzeug, Schiff oder Ereignis. Hier erscheinen Ortsinfos, Wetter, nahe Kameras, Satellitenbild und Ereignisse in der Umgebung.</p>
+      </div>
+      <div id="intelContent" hidden></div>
+    </section>
+
+    <!-- OSINT -->
+    <section class="tab-pane" data-pane="osint">
+      <div class="seg seg-wide" id="osintTools">
+        <button type="button" class="seg-btn is-active" data-tool="domain">Domain</button>
+        <button type="button" class="seg-btn" data-tool="ip">IP</button>
+        <button type="button" class="seg-btn" data-tool="user" data-i18n="osint.user">Benutzer</button>
+        <button type="button" class="seg-btn" data-tool="person" data-i18n="osint.person">Person</button>
+        <button type="button" class="seg-btn" data-tool="image" data-i18n="osint.image">Bild</button>
+      </div>
+      <form class="osint-form" id="osintForm">
+        <input id="osintInput" class="input mono" type="text" autocomplete="off" spellcheck="false" placeholder="example.com">
+        <button type="submit" class="btn btn-accent" data-i18n="osint.run">Abfragen</button>
+      </form>
+      <label class="drop" id="imageDrop" hidden>
+        <input id="imageInput" type="file" accept="image/*">
+        <span data-i18n="osint.drop">Bild hierher ziehen oder auswählen – EXIF, GPS und Rückwärtssuche</span>
+      </label>
+      <p class="hint" id="osintHint"></p>
+      <div id="osintOut" class="osint-out"></div>
+    </section>
+
+    <!-- Kameras -->
+    <section class="tab-pane" data-pane="cams">
+      <div class="row gap-s">
+        <input id="camFilter" class="input" type="search" data-i18n-placeholder="cams.filter" placeholder="Kameras filtern …">
+        <select id="camCategory" class="select">
+          <option value="all" data-i18n="cams.all">Alle</option>
+          <option value="city" data-i18n="cams.city">Stadt</option>
+          <option value="traffic" data-i18n="cams.traffic">Verkehr</option>
+          <option value="nature" data-i18n="cams.nature">Natur/Wetter</option>
+          <option value="space" data-i18n="cams.space">Weltraum</option>
+          <option value="fav" data-i18n="cams.fav">Favoriten</option>
+        </select>
+      </div>
+      <div class="row gap-s wrap">
+        <button type="button" class="btn btn-s" id="btnLoadTraffic" data-i18n="cams.loadapi">Verkehrskameras laden (TfL, NYC)</button>
+        <button type="button" class="btn btn-s" id="btnLoadWindy" data-i18n="cams.loadwindy">Windy-Webcams im Ausschnitt</button>
+        <button type="button" class="btn btn-s" id="btnAddCam" data-i18n="cams.add">+ Eigene Kamera</button>
+        <button type="button" class="btn btn-s" id="btnImportCams" data-i18n="cams.import">Import</button>
+        <button type="button" class="btn btn-s" id="btnExportCams" data-i18n="cams.export">Export</button>
+      </div>
+      <form class="card" id="addCamForm" hidden>
+        <label class="field"><span data-i18n="cams.f.name">Name</span><input id="camName" class="input" required></label>
+        <label class="field"><span data-i18n="cams.f.url">YouTube-Link, Bild-URL (JPG) oder Video-URL (MP4/HLS)</span><input id="camUrl" class="input mono" required></label>
+        <div class="row gap-s">
+          <label class="field"><span>Lat</span><input id="camLat" class="input mono" inputmode="decimal" required></label>
+          <label class="field"><span>Lon</span><input id="camLon" class="input mono" inputmode="decimal" required></label>
+        </div>
+        <label class="field"><span data-i18n="cams.f.cat">Kategorie</span>
+          <select id="camCat" class="select"><option value="city" data-i18n="cams.city">Stadt</option><option value="traffic" data-i18n="cams.traffic">Verkehr</option><option value="nature" data-i18n="cams.nature">Natur/Wetter</option><option value="space" data-i18n="cams.space">Weltraum</option></select>
+        </label>
+        <div class="row gap-s"><button type="submit" class="btn btn-accent" data-i18n="common.save">Speichern</button><button type="button" class="btn" id="btnCancelCam" data-i18n="common.cancel">Abbrechen</button></div>
+      </form>
+      <div class="cam-count mono" id="camCount"></div>
+      <ul class="cam-list" id="camList"></ul>
+    </section>
+
+    <!-- Fälle / Notizen -->
+    <section class="tab-pane" data-pane="cases">
+      <div class="row gap-s">
+        <select id="caseSelect" class="select grow"></select>
+        <button type="button" class="btn btn-s" id="btnNewCase" data-i18n="cases.new">+ Fall</button>
+      </div>
+      <textarea id="caseNotes" class="input notes" data-i18n-placeholder="cases.placeholder" placeholder="Notizen, Quellen, Beobachtungen …"></textarea>
+      <div class="row gap-s wrap">
+        <button type="button" class="btn btn-s" id="btnPinView" data-i18n="cases.pin">Kartenausschnitt anheften</button>
+        <button type="button" class="btn btn-s" id="btnShot" data-i18n="cases.shot">Screenshot</button>
+        <button type="button" class="btn btn-s" id="btnPdf" data-i18n="cases.pdf">PDF-Bericht</button>
+        <button type="button" class="btn btn-s" id="btnExportAll" data-i18n="cases.export">Alles exportieren (JSON)</button>
+      </div>
+      <h3 class="sub-h" data-i18n="cases.items">Funde & Anheftungen</h3>
+      <ul class="item-list" id="caseItems"></ul>
+      <h3 class="sub-h" data-i18n="cases.favs">Favoriten-Orte</h3>
+      <ul class="item-list" id="favPlaces"></ul>
+    </section>
+
+    <!-- Alarme -->
+    <section class="tab-pane" data-pane="alerts">
+      <div class="card">
+        <label class="field"><span data-i18n="alerts.quake">Erdbeben-Alarm ab Magnitude</span>
+          <input id="quakeThreshold" class="input mono" type="number" min="2" max="9" step="0.1" value="6.0"></label>
+        <label class="field"><span data-i18n="alerts.keywords">Stichwörter für News-Alarm (Komma-getrennt)</span>
+          <input id="newsKeywords" class="input" placeholder="Erdbeben, Tsunami, Vulkan"></label>
+        <div class="row gap-s">
+          <button type="button" class="btn btn-s" id="btnAddGeofence" data-i18n="alerts.addzone">+ Geofence-Zone zeichnen</button>
+          <button type="button" class="btn btn-s" id="btnClearAlerts" data-i18n="alerts.clear">Liste leeren</button>
+        </div>
+      </div>
+      <h3 class="sub-h" data-i18n="alerts.zones">Zonen</h3>
+      <ul class="item-list" id="geofenceList"></ul>
+      <h3 class="sub-h" data-i18n="alerts.log">Ereignisprotokoll</h3>
+      <ul class="alert-log" id="alertLog"></ul>
+    </section>
+  </aside>
+
+  <!-- ============ UNTEN: ZEITLEISTE + TICKER + STATUS ============ -->
+  <footer class="bottom">
+    <div class="timeline">
+      <button type="button" class="btn btn-live is-live" id="btnLive"><span class="live-dot"></span>LIVE</button>
+      <button type="button" class="btn btn-icon" id="btnPlay" title="Abspielen">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5l12 7-12 7z" fill="currentColor"/></svg>
+      </button>
+      <div class="timeline-track">
+        <input id="timeSlider" type="range" min="0" max="10080" step="10" value="10080" aria-label="Zeit">
+        <div class="timeline-ticks" id="timelineTicks"></div>
+      </div>
+      <div class="timeline-label mono" id="timeLabel">—</div>
+    </div>
+    <div class="ticker" aria-live="off"><div class="ticker-tag" data-i18n="ticker.tag">LAGE</div><div class="ticker-viewport"><div class="ticker-run" id="tickerRun"></div></div></div>
+    <div class="statusbar">
+      <div class="sources" id="sourceStatus"></div>
+      <div class="counters mono" id="counters"></div>
+      <div class="clocks mono" id="clocks"></div>
+    </div>
+  </footer>
+</div>
+
+<!-- Freie Kamera-Fenster -->
+<div class="window-layer" id="windowLayer"></div>
+
+<!-- Video-Wand -->
+<div class="wall" id="wall" hidden>
+  <div class="wall-bar">
+    <span class="wall-title" data-i18n="wall.title">Video-Wand</span>
+    <label class="mini-field"><span data-i18n="wall.cols">Spalten</span><input id="wallCols" type="number" min="1" max="8" value="3" class="input mono"></label>
+    <label class="mini-field"><span data-i18n="wall.rows">Zeilen</span><input id="wallRows" type="number" min="1" max="8" value="3" class="input mono"></label>
+    <button type="button" class="btn btn-s" id="btnWallFill" data-i18n="wall.fill">Mit Kameras füllen</button>
+    <button type="button" class="btn btn-s" id="btnWallClear" data-i18n="wall.clear">Leeren</button>
+    <span class="grow"></span>
+    <button type="button" class="btn btn-s" id="btnWallClose" data-i18n="common.close">Schließen</button>
+  </div>
+  <div class="wall-grid" id="wallGrid"></div>
+</div>
+
+<!-- Einstellungen -->
+<div class="modal" id="settingsModal" hidden>
+  <div class="modal-card" role="dialog" aria-labelledby="settingsTitle">
+    <div class="modal-head">
+      <h2 id="settingsTitle" data-i18n="settings.title">Einstellungen</h2>
+      <button type="button" class="btn btn-icon" id="btnSettingsClose" aria-label="Schließen">✕</button>
+    </div>
+    <div class="modal-body">
+      <section class="set-group">
+        <h3 data-i18n="settings.look">Darstellung</h3>
+        <div class="swatches" id="accentSwatches">
+          <button type="button" class="swatch" data-accent="cyan" title="Cyan"></button>
+          <button type="button" class="swatch" data-accent="violet" title="Violett"></button>
+          <button type="button" class="swatch" data-accent="amber" title="Bernstein"></button>
+          <button type="button" class="swatch" data-accent="green" title="Grün"></button>
+          <button type="button" class="swatch" data-accent="red" title="Rot"></button>
+        </div>
+        <label class="toggle"><input type="checkbox" id="setScanFx" checked><span data-i18n="settings.scanfx">Scan- und Zoom-Animationen</span></label>
+      </section>
+      <section class="set-group">
+        <h3 data-i18n="settings.storage">Speichern</h3>
+        <label class="toggle"><input type="checkbox" id="setPersist"><span data-i18n="settings.persist">Daten lokal speichern (Favoriten, Fälle, Kameras, Keys, Einstellungen)</span></label>
+        <p class="hint" data-i18n="settings.persisthint">Aus: Nichts wird gespeichert, alles ist nach dem Schließen weg. An: Alles bleibt lokal auf diesem Rechner.</p>
+        <button type="button" class="btn btn-s" id="btnWipe" data-i18n="settings.wipe">Alle gespeicherten Daten löschen</button>
+      </section>
+      <section class="set-group">
+        <h3 data-i18n="settings.keys">API-Schlüssel (kostenlos)</h3>
+        <label class="field"><span>Windy Webcams API · <a href="https://api.windy.com/keys" target="_blank" rel="noopener">api.windy.com</a></span><input id="keyWindy" class="input mono" type="password" autocomplete="off"></label>
+        <label class="field"><span>AISStream (Schiffe) · <a href="https://aisstream.io" target="_blank" rel="noopener">aisstream.io</a></span><input id="keyAis" class="input mono" type="password" autocomplete="off"></label>
+        <label class="field"><span>Sentinel Hub Instance-ID (Copernicus) · <a href="https://dataspace.copernicus.eu" target="_blank" rel="noopener">dataspace.copernicus.eu</a></span><input id="keySentinel" class="input mono" type="password" autocomplete="off"></label>
+        <p class="hint" data-i18n="settings.keyhint">Ohne Schlüssel funktionieren: Flüge, Erdbeben, NASA-Satellit, Wettersatellit, Regenradar, Satelliten-Tracking, Verkehrskameras, News und alle OSINT-Werkzeuge.</p>
+      </section>
+      <section class="set-group">
+        <h3 data-i18n="settings.legal">Rechtliches</h3>
+        <p class="hint" data-i18n="settings.legaltext">GOD'S EYE nutzt nur öffentlich zugängliche, offizielle Datenquellen und Kameras, die von ihren Betreibern freigegeben sind. Keine Zugriffe auf ungeschützte private Kameras, keine Personenprofile. Beachte die Nutzungsbedingungen der Quellen und die DSGVO.</p>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script src="../node_modules/leaflet/dist/leaflet.js"></script>
+<script src="../node_modules/globe.gl/dist/globe.gl.min.js"></script>
+<script src="../node_modules/satellite.js/dist/satellite.min.js"></script>
+<script src="../node_modules/exifr/dist/lite.umd.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/store.js"></script>
+<script src="js/net.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/geo.js"></script>
+<script src="js/map.js"></script>
+<script src="js/layers.js"></script>
+<script src="js/timeline.js"></script>
+<script src="js/cams-data.js"></script>
+<script src="js/cams.js"></script>
+<script src="js/intel.js"></script>
+<script src="js/osint.js"></script>
+<script src="js/search.js"></script>
+<script src="js/cases.js"></script>
+<script src="js/alerts.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
