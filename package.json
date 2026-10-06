@@ -56,7 +56,9 @@
         "deb"
       ],
       "category": "Utility",
-      "maintainer": "GOD'S EYE <noreply@godseye.app>"
+      "maintainer": "GOD'S EYE <noreply@godseye.app>",
+      "executableName": "gods-eye",
+      "artifactName": "GodsEye-${version}-linux-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -83,5 +85,6 @@
     "name": "GOD'S EYE",
     "email": "noreply@godseye.app"
   },
-  "homepage": "https://github.com/slogic3d-cloud/auge-gottes"
+  "homepage": "https://github.com/slogic3d-cloud/auge-gottes",
+  "desktopName": "gods-eye.desktop"
 }
