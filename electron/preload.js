@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('godseye', {
   capture: (rect) => ipcRenderer.invoke('capture', rect),
   pdfReport: (html, name) => ipcRenderer.invoke('pdf:report', { html, name }),
   notify: (title, body) => ipcRenderer.invoke('notify', { title, body }),
+  ytLive: (channel) => ipcRenderer.invoke('yt:live', channel),
   openExternal: (url) => ipcRenderer.invoke('open:external', url),
   ais: {
     start: (apiKey, bbox) => ipcRenderer.invoke('ais:start', { apiKey, bbox }),

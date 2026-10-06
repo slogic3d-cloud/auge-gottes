@@ -18,6 +18,7 @@ function createWindow() {
     backgroundColor: '#05070d',
     title: "GOD'S EYE",
     autoHideMenuBar: true,
+    icon: path.join(__dirname, '..', 'build', 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -62,7 +63,7 @@ ipcMain.handle('net:fetch', async (_e, url, opts = {}) => {
   try {
     const res = await net.fetch(url, {
       method: opts.method || 'GET',
-      headers: Object.assign({ 'User-Agent': "GodsEye/0.1 (OSINT-Dashboard; Electron)" }, opts.headers || {}),
+      headers: Object.assign({ 'User-Agent': "GodsEye/0.1 (+https://github.com/slogic3d-cloud/auge-gottes)" }, opts.headers || {}),
       body: opts.body,
       redirect: opts.type === 'status' ? 'manual' : 'follow',
       signal: controller.signal
@@ -124,6 +125,24 @@ ipcMain.handle('pdf:report', async (_e, { html, name }) => {
 ipcMain.handle('notify', (_e, { title, body }) => {
   if (Notification.isSupported()) new Notification({ title, body }).show();
   return true;
+});
+
+// Aktuellen Livestream eines YouTube-Kanals finden (die alte Kanal-Einbettung liefert oft "nicht verfügbar")
+const ytCache = new Map();
+ipcMain.handle('yt:live', async (_e, channel) => {
+  if (!/^UC[\w-]{22}$/.test(String(channel))) return null;
+  const hit = ytCache.get(channel);
+  if (hit && Date.now() - hit.ts < 30 * 60000) return hit.id;
+  try {
+    const res = await net.fetch(`https://www.youtube.com/channel/${channel}/live`, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36', 'Cookie': 'SOCS=CAI; CONSENT=YES+1', 'Accept-Language': 'en' }
+    });
+    const html = await res.text();
+    const m = html.match(/"currentVideoEndpoint".{0,600}?"videoId":"([\w-]{11})"/);
+    const id = m && /"isLive":true/.test(html) ? m[1] : null;
+    ytCache.set(channel, { id, ts: Date.now() });
+    return id;
+  } catch (_) { return null; }
 });
 
 ipcMain.handle('open:external', (_e, url) => {

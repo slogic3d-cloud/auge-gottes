@@ -2,7 +2,16 @@
 
 Ein OSINT-Lagebild als Desktop-App (Electron), inspiriert vom „God's Eye“ aus *Fast & Furious* – aber nur mit **offenen, legalen Quellen**: öffentliche Livecams, NASA-/Copernicus-Satellitenbilder, Live-Flug- und Schiffsverkehr, Satelliten-Tracking, Erdbeben, Naturereignisse, Nachrichten und Recherche-Werkzeuge.
 
-## Starten
+## Download
+
+Fertige Dateien gibt es unter **Releases** (werden von GitHub Actions automatisch gebaut, siehe `.github/workflows/release.yml`):
+
+- Windows: `GodsEye-Setup-0.1.0.exe` (Installer), `GodsEye-Portable-0.1.0.exe` oder ZIP entpacken und `GOD'S EYE.exe` starten
+- Linux: `.AppImage` oder `.deb`
+
+Die App ist nicht signiert. Windows SmartScreen warnt beim ersten Start: „Weitere Informationen“ → „Trotzdem ausführen“.
+
+## Selbst starten
 
 ```bash
 npm install

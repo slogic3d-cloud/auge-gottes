@@ -193,7 +193,6 @@ GE.osint = (() => {
   // ---------- Öffentliche Person ----------
   async function person(name) {
     const q = encodeURIComponent(name), qq = encodeURIComponent('"' + name + '"');
-    out().append(h('p.hint', null, t('osint.hint.person')));
     out().append(block('Suchlinks', h('div.link-grid', null,
       link(`https://www.google.com/search?q=${qq}`, 'Google'),
       link(`https://www.bing.com/search?q=${qq}`, 'Bing'),

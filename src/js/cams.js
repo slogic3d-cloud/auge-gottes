@@ -35,10 +35,18 @@ GE.cams = (() => {
     const wrap = h('div', { style: 'position:absolute;inset:0' });
     let timer = null;
     if (cam.kind === 'youtube') {
-      const src = cam.channel
-        ? `https://www.youtube.com/embed/live_stream?channel=${cam.channel}&autoplay=1&mute=1&playsinline=1`
-        : `https://www.youtube.com/embed/${cam.video}?autoplay=1&mute=1&playsinline=1`;
-      wrap.append(h('iframe', { src, allow: 'autoplay; encrypted-media; picture-in-picture; fullscreen', allowfullscreen: true, referrerpolicy: 'strict-origin-when-cross-origin', title: cam.name }));
+      const embed = (vid) => wrap.append(h('iframe', { src: `https://www.youtube.com/embed/${vid}?autoplay=1&mute=1&playsinline=1`, allow: 'autoplay; encrypted-media; picture-in-picture; fullscreen', allowfullscreen: true, referrerpolicy: 'strict-origin-when-cross-origin', title: cam.name }));
+      if (cam.video) embed(cam.video);
+      else if (window.godseye && window.godseye.ytLive) {
+        // Kanal -> aktuelle Live-Video-ID auflösen
+        const wait = h('div.cam-error', null, t('loading'));
+        wrap.append(wait);
+        window.godseye.ytLive(cam.channel).then((vid) => {
+          wait.remove();
+          if (vid) embed(vid);
+          else wrap.append(h('div.cam-error', null, t('cam.offline'), ' ', link(cam.link || `https://www.youtube.com/channel/${cam.channel}/streams`, '↗ YouTube')));
+        });
+      } else embed('live_stream?channel=' + cam.channel);
     } else if (cam.kind === 'image') {
       const img = h('img.cam-img', { alt: cam.name });
       const load = () => { img.src = cam.url + (cam.url.includes('?') ? '&' : '?') + '_t=' + Date.now(); };
