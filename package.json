@@ -1,0 +1,90 @@
+{
+  "name": "gods-eye",
+  "productName": "GOD'S EYE",
+  "version": "0.2.0",
+  "description": "OSINT-Lagebild: Livecams, Satellitenbilder, Flug-/Schiffsverkehr, Naturereignisse und Recherche-Werkzeuge aus offenen, legalen Quellen.",
+  "main": "electron/main.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "web": "npx http-server . -p 8080 -c-1 -o /src/index.html",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux",
+    "dist:win:zip": "electron-builder --win zip --x64 -c.win.signAndEditExecutable=false"
+  },
+  "build": {
+    "appId": "dev.godseye.app",
+    "productName": "GOD'S EYE",
+    "files": [
+      "electron/**",
+      "src/**",
+      "package.json",
+      "node_modules/leaflet/dist/**",
+      "node_modules/globe.gl/dist/**",
+      "node_modules/satellite.js/dist/**",
+      "node_modules/exifr/dist/**",
+      "node_modules/ws/**",
+      "build/icon.png"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "signAndEditExecutable": true,
+      "artifactName": "GodsEye-${version}-win-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility",
+      "maintainer": "GOD'S EYE <noreply@godseye.app>",
+      "executableName": "gods-eye",
+      "artifactName": "GodsEye-${version}-linux-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "GodsEye-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "GodsEye-Portable-${version}.${ext}"
+    },
+    "publish": null
+  },
+  "dependencies": {
+    "exifr": "^7.1.3",
+    "globe.gl": "^2.46.2",
+    "leaflet": "^1.9.4",
+    "satellite.js": "^5.0.0",
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3"
+  },
+  "author": {
+    "name": "GOD'S EYE",
+    "email": "noreply@godseye.app"
+  },
+  "homepage": "https://github.com/slogic3d-cloud/auge-gottes",
+  "desktopName": "gods-eye.desktop"
+}
