@@ -1,7 +1,7 @@
 {
   "name": "gods-eye",
   "productName": "GOD'S EYE",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "OSINT-Lagebild: Livecams, Satellitenbilder, Flug-/Schiffsverkehr, Naturereignisse und Recherche-Werkzeuge aus offenen, legalen Quellen.",
   "main": "electron/main.js",
   "license": "MIT",

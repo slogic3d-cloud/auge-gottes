@@ -6,7 +6,7 @@ Ein OSINT-Lagebild als Desktop-App (Electron), inspiriert vom „God's Eye“ au
 
 Fertige Dateien gibt es unter **Releases** (werden von GitHub Actions automatisch gebaut, siehe `.github/workflows/release.yml`):
 
-- Windows: `GodsEye-Setup-0.1.0.exe` (Installer), `GodsEye-Portable-0.1.0.exe` oder ZIP entpacken und `GOD'S EYE.exe` starten
+- Windows: `GodsEye-Setup-0.2.0.exe` (Installer), `GodsEye-Portable-0.2.0.exe` oder ZIP entpacken und `GOD'S EYE.exe` starten
 - Linux: `.AppImage` oder `.deb`
 
 Die App ist nicht signiert. Windows SmartScreen warnt beim ersten Start: „Weitere Informationen“ → „Trotzdem ausführen“.
@@ -39,7 +39,7 @@ Ohne Electron kann man `src/index.html` auch im Browser öffnen (`npm run web`).
 | Schiffe | Live-AIS im Kartenausschnitt | aisstream.io | ja (kostenlos) |
 | Satelliten | ISS, Raumstationen, hellste und Wettersatelliten mit Umlaufbahn | CelesTrak + satellite.js | – |
 | Ereignisse | Erdbeben (24 h), Feuer, Stürme, Vulkane | USGS, NASA EONET, VIIRS | – |
-| Livecams | Kuratierte Liste, ~1 800 Verkehrskameras, Windy-Webcams, eigene | YouTube, TfL, NYC DOT, Windy | Windy optional |
+| Livecams | ~7 500 offene Kameras, automatisch geladen: Verkehr London, New York, Kalifornien, British Columbia, Hongkong, Singapur; Wetterkameras Finnland; Alpen-/Landschaftskameras (foto-webcam.eu); dazu Windy-Webcams am angeklickten Ort, YouTube-Livestreams, eigene | TfL, NYC DOT, Caltrans, DriveBC, HK Transport Department, LTA/data.gov.sg, Digitraffic, foto-webcam.eu, Windy | Windy optional |
 | OSINT | Domain (RDAP, DNS, Subdomains), IP, Benutzername (~30 Plattformen), öffentliche Person, Bild-EXIF/GPS | rdap.org, Cloudflare DoH, crt.sh, ipwho.is, Wikipedia | – |
 | News | Ticker und Stichwort-Alarm, Nachrichten zu einem Ort | Tagesschau, DW, BBC, Al Jazeera, NASA, GDELT | – |
 
@@ -69,6 +69,8 @@ src/js/              Module: map, layers, timeline, cams, intel, osint, search, 
 ```
 
 ## Rechtliches
+
+- Kameras: nur Bilder, die Behörden oder Betreiber selbst öffentlich bereitstellen. Seiten mit Bot-Schutz (z. B. meteoblue) werden nicht ausgelesen, sondern nur verlinkt. Die Bildrechte bleiben bei den Betreibern; Anzeige zur privaten Nutzung mit Quellenangabe.
 
 - Nur öffentlich zugängliche, offizielle Quellen und Kameras, die ihre Betreiber selbst veröffentlichen. **Keine** ungeschützten privaten Kameras, kein Umgehen von Logins oder Zugriffsschutz.
 - Die Personensuche liefert nur Wikipedia-/Wikidata-Treffer und Suchlinks. Sie baut keine Profile über Privatpersonen. Bitte DSGVO und Persönlichkeitsrechte beachten.

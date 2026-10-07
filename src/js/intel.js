@@ -100,9 +100,20 @@ GE.intel = (() => {
   }
 
   function camsNear(lat, lon) {
-    const near = GE.cams.near(lat, lon, 150).slice(0, 8);
-    if (!near.length) return h('p.hint', null, t('i.nocams'));
-    return h('ul.mini-list', null, near.map((c) => h('li', { onclick: () => GE.cams.open(c) }, '⧉ ', c.name, h('span.m-meta', null, fmt.num(c.d, 0) + ' km'))));
+    const box = h('div', { style: 'display:flex;flex-direction:column;gap:6px' });
+    const render = () => {
+      box.innerHTML = '';
+      const near = GE.cams.near(lat, lon, 150).slice(0, 10);
+      if (near.length) box.append(h('ul.mini-list', null, near.map((c) => h('li', { onclick: () => GE.cams.open(c) }, '⧉ ', c.name, h('span.m-meta', null, `${fmt.num(c.d, 0)} km · ${c.source || ''}`)))));
+      else box.append(h('p.hint', null, t('i.nocams')));
+      box.append(h('div.intel-actions', null,
+        h('button.btn.btn-s', { type: 'button', onclick: async () => { await GE.cams.loadWindy({ lat, lon }); render(); } }, t('i.windyhere')),
+        link(`https://www.windy.com/-Webcams/webcams?${lat.toFixed(3)},${lon.toFixed(3)},11`, 'Windy-Webcamkarte'),
+        link(`https://www.meteoblue.com/de/wetter/webcams/${lat.toFixed(3)}N${lon.toFixed(3)}E`, 'meteoblue Webcams')));
+    };
+    render();
+    if (!GE.cams.openLoaded) setTimeout(render, 6000);
+    return box;
   }
 
   function eventsNear(lat, lon) {

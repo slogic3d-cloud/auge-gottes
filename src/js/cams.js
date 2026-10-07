@@ -49,7 +49,11 @@ GE.cams = (() => {
       } else embed('live_stream?channel=' + cam.channel);
     } else if (cam.kind === 'image') {
       const img = h('img.cam-img', { alt: cam.name });
-      const load = () => { img.src = cam.url + (cam.url.includes('?') ? '&' : '?') + '_t=' + Date.now(); };
+      const load = async () => {
+        let u = cam.url;
+        if (cam.resolve) { try { u = cam.url = await cam.resolve(); } catch (_) {} }
+        img.src = cam.resolve ? u : u + (u.includes('?') ? '&' : '?') + '_t=' + Date.now();
+      };
       img.onerror = () => { if (!wrap.querySelector('.cam-error')) wrap.append(h('div.cam-error', null, t('cam.err'))); };
       img.onload = () => { const e = wrap.querySelector('.cam-error'); if (e) e.remove(); };
       load(); timer = setInterval(load, (cam.refresh || 30) * 1000);
@@ -271,34 +275,76 @@ GE.cams = (() => {
   function changed() { renderList(); const l = GE.layers.get('camsMap'); if (GE.layers.isOn('camsMap')) l.redraw(); }
 
   // ---------- API-Quellen ----------
-  async function loadTraffic() {
+  // ---------- Offene, offizielle Kameraquellen (ohne Schlüssel) ----------
+  // Jede Quelle liefert eine Liste {id, name, lat, lon, kind, url, ...}. Nur Kameras, die ihre Betreiber selbst veröffentlichen.
+  const openSources = [
+    ['TfL London', async () => (await GE.net.json('https://api.tfl.gov.uk/Place/Type/JamCam')).map((c) => {
+      const p = {}; (c.additionalProperties || []).forEach((a) => (p[a.key] = a.value));
+      if (p.available === 'false') return null;
+      return { id: 'tfl-' + c.id, name: 'London – ' + c.commonName, cat: 'traffic', lat: c.lat, lon: c.lon, kind: p.videoUrl ? 'video' : 'image', url: p.videoUrl || p.imageUrl, refresh: 60, link: 'https://tfl.gov.uk/traffic/status/' };
+    })],
+    ['NYC DOT', async () => (await GE.net.json('https://webcams.nyctmc.org/api/cameras')).map((c) => c.isOnline !== 'true' ? null :
+      { id: 'nyc-' + c.id, name: 'New York – ' + c.name, cat: 'traffic', lat: c.latitude, lon: c.longitude, kind: 'image', url: c.imageUrl, refresh: 5, link: 'https://webcams.nyctmc.org/' })],
+    ['Caltrans', async () => {
+      const out = [];
+      await Promise.all(Array.from({ length: 12 }, (_, i) => i + 1).map(async (d) => {
+        const dd = String(d).padStart(2, '0');
+        try {
+          const j = await GE.net.json(`https://cwwp2.dot.ca.gov/data/d${d}/cctv/cctvStatusD${dd}.json`);
+          (j.data || []).forEach(({ cctv: c }) => {
+            const img = c.imageData && c.imageData.static && c.imageData.static.currentImageURL;
+            if (!img || c.inService === 'false') return;
+            out.push({ id: `ca-${d}-${c.index}`, name: `Kalifornien – ${c.location.locationName}`, cat: 'traffic', lat: +c.location.latitude, lon: +c.location.longitude, kind: 'image', url: img, refresh: 60, link: 'https://quickmap.dot.ca.gov/' });
+          });
+        } catch (_) {}
+      }));
+      return out;
+    }],
+    ['DriveBC', async () => (await GE.net.json('https://www.drivebc.ca/api/webcams/')).map((c) => c.location && c.links ?
+      { id: 'bc-' + c.id, name: `British Columbia – ${c.name}`, cat: 'traffic', lat: c.location.coordinates[1], lon: c.location.coordinates[0], kind: 'image', url: 'https://www.drivebc.ca' + c.links.imageDisplay.split('?')[0], refresh: 300, link: 'https://www.drivebc.ca/' } : null)],
+    ['Digitraffic FI', async () => (await GE.net.json('https://tie.digitraffic.fi/api/weathercam/v1/stations')).features.map((f) => {
+      const pre = (f.properties.presets || []).find((p) => p.inCollection);
+      return pre ? { id: 'fi-' + f.id, name: `Finnland – ${f.properties.name.replace(/_/g, ' ')}`, cat: 'nature', lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], kind: 'image', url: `https://weathercam.digitraffic.fi/${pre.id}.jpg`, refresh: 600, link: 'https://www.digitraffic.fi/en/road-traffic/' } : null;
+    })],
+    ['Singapur LTA', async () => (await GE.net.json('https://api.data.gov.sg/v1/transport/traffic-images')).items[0].cameras.map((c) => ({
+      id: 'sg-' + c.camera_id, name: `Singapur – Verkehrskamera ${c.camera_id}`, cat: 'traffic', lat: c.location.latitude, lon: c.location.longitude, kind: 'image', url: c.image, refresh: 60, link: 'https://data.gov.sg/',
+      // Bild-URL ändert sich jede Minute: vor jedem Neuladen aktuelle Adresse holen
+      resolve: async () => { const d = await GE.net.json('https://api.data.gov.sg/v1/transport/traffic-images'); const x = d.items[0].cameras.find((y) => y.camera_id === c.camera_id); return x ? x.image : c.image; }
+    }))],
+    ['Hongkong TD', async () => {
+      const xml = new DOMParser().parseFromString(await GE.net.text('https://static.data.gov.hk/td/traffic-snapshot-images/code/Traffic_Camera_Locations_En.xml'), 'text/xml');
+      return [...xml.querySelectorAll('image')].map((n) => {
+        const g = (k) => (n.querySelector(k) || {}).textContent;
+        return { id: 'hk-' + g('key'), name: `Hongkong – ${g('description')}`, cat: 'traffic', lat: +g('latitude'), lon: +g('longitude'), kind: 'image', url: g('url'), refresh: 120, link: 'https://www.td.gov.hk/' };
+      });
+    }],
+    ['foto-webcam.eu', async () => (await GE.net.json('https://www.foto-webcam.eu/webcam/include/metadata.php')).cams.map((c) => c.offline || c.hidden ? null : {
+      id: 'fw-' + c.id, name: `${c.name} – ${c.title}`, cat: 'nature', lat: c.latitude, lon: c.longitude, kind: 'image', url: c.imgurl.replace('/400.jpg', '/1200.jpg'), refresh: 600, link: c.link
+    })]
+  ];
+
+  let openLoaded = false;
+  async function loadTraffic(silent) {
     let n = 0;
-    try {
-      const tfl = await GE.net.json('https://api.tfl.gov.uk/Place/Type/JamCam');
-      tfl.forEach((c) => {
-        const p = {}; (c.additionalProperties || []).forEach((a) => (p[a.key] = a.value));
-        if (p.available === 'false') return;
-        apiCams.push({ id: 'tfl-' + c.id, name: 'London – ' + c.commonName, cat: 'traffic', lat: c.lat, lon: c.lon, kind: p.videoUrl ? 'video' : 'image', url: p.videoUrl || p.imageUrl, refresh: 60, source: 'TfL', link: 'https://tfl.gov.uk/traffic/status/' });
-        n++;
-      });
-    } catch (e) { toast('TfL: ' + e.message, 'warn'); }
-    try {
-      const nyc = await GE.net.json('https://webcams.nyctmc.org/api/cameras');
-      nyc.forEach((c) => {
-        if (c.isOnline !== 'true') return;
-        apiCams.push({ id: 'nyc-' + c.id, name: 'New York – ' + c.name, cat: 'traffic', lat: c.latitude, lon: c.longitude, kind: 'image', url: c.imageUrl, refresh: 5, source: 'NYC DOT', link: 'https://webcams.nyctmc.org/' });
-        n++;
-      });
-    } catch (e) { toast('NYC DOT: ' + e.message, 'warn'); }
+    const done = [];
+    await Promise.all(openSources.map(async ([src, fn]) => {
+      try {
+        const cams = (await fn()).filter((c) => c && c.url && isFinite(c.lat) && isFinite(c.lon));
+        cams.forEach((c) => (c.source = src));
+        apiCams.push(...cams); n += cams.length; done.push(`${src} ${cams.length}`);
+      } catch (e) { if (!silent) toast(`${src}: ${e.message}`, 'warn'); }
+    }));
     dedupe();
-    toast(t('toast.camsloaded', { n }), 'ok');
+    openLoaded = true;
+    if (!silent) toast(t('toast.camsloaded', { n }) + ' · ' + done.join(' · '), 'ok', 7000);
     changed();
+    return n;
   }
 
-  async function loadWindy() {
+  async function loadWindy(at) {
     const key = GE.store.get('keyWindy', '');
     if (!key) { toast(t('toast.nokey') + ' (Windy)', 'warn'); return; }
-    const c = GE.map.center();
+    const c = at || GE.map.center();
     try {
       const d = await GE.net.json(`https://api.windy.com/webcams/api/v3/webcams?nearby=${c.lat.toFixed(3)},${c.lon.toFixed(3)},250&include=location,player,images,categories&limit=50`, { headers: { 'x-windy-api-key': key } });
       const cams = (d.webcams || []).map((w) => {
@@ -359,8 +405,8 @@ GE.cams = (() => {
   function init() {
     $('#camFilter').addEventListener('input', GE.ui.debounce(renderList, 150));
     $('#camCategory').addEventListener('change', renderList);
-    $('#btnLoadTraffic').addEventListener('click', loadTraffic);
-    $('#btnLoadWindy').addEventListener('click', loadWindy);
+    $('#btnLoadTraffic').addEventListener('click', () => loadTraffic(false));
+    $('#btnLoadWindy').addEventListener('click', () => loadWindy());
     $('#btnExportCams').addEventListener('click', exportCams);
     $('#btnImportCams').addEventListener('click', importCams);
     $('#btnAddCam').addEventListener('click', () => {
@@ -385,7 +431,9 @@ GE.cams = (() => {
     const ws = GE.store.get('wallSize', null); if (ws) { $('#wallCols').value = ws.cols; $('#wallRows').value = ws.rows; }
     GE.i18n.onChange(renderList);
     renderList();
+    // Offene Quellen im Hintergrund laden, damit Karte und „Kameras in der Nähe“ sofort gefüllt sind
+    setTimeout(() => loadTraffic(true), 2500);
   }
 
-  return { init, list, open, near, toWall, openWall, closeWall, renderList, byId, esc };
+  return { init, list, open, near, loadWindy, loadTraffic, get openLoaded() { return openLoaded; }, toWall, openWall, closeWall, renderList, byId, esc };
 })();
